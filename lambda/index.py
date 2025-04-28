@@ -4,6 +4,7 @@ import os
 import boto3
 import re  # 正規表現モジュールをインポート
 from botocore.exceptions import ClientError
+import urllib.request
 
 
 # Lambda コンテキストからリージョンを抽出する関数
@@ -18,7 +19,31 @@ def extract_region_from_arn(arn):
 bedrock_client = None
 
 # モデルID
-MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
+# MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
+MODEL_ID = os.environ.get("MODEL_ID", "google/gemma-3-1b-it")
+
+# 外部APIの呼び出し (original)
+def call_external_api():
+    url = 'https://a27f-35-245-103-168.ngrok-free.app/generate'  # 呼び出したいAPIのURL
+    payload = {
+        'message': 'From FastAPI',
+    }
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    data = json.dumps(payload).encode('utf-8')  # JSONをバイト列に変換
+
+    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response_body = response.read().decode('utf-8')
+            print(response_body)
+            return json.loads(response_body)  # 必要ならJSONとしてパース
+    except Exception as e:
+        print(f"Error calling external API: {e}")
+        return None
 
 def lambda_handler(event, context):
     try:
@@ -83,11 +108,14 @@ def lambda_handler(event, context):
         print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
         
         # invoke_model APIを呼び出し
-        response = bedrock_client.invoke_model(
-            modelId=MODEL_ID,
-            body=json.dumps(request_payload),
-            contentType="application/json"
-        )
+        # response = bedrock_client.invoke_model(
+        #     modelId=MODEL_ID,
+        #     body=json.dumps(request_payload),
+        #     contentType="application/json"
+        # )
+
+        # FastAPIへの接続
+        call_external_api()
         
         # レスポンスを解析
         response_body = json.loads(response['body'].read())
