@@ -23,7 +23,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 # 外部APIの呼び出し (original)
 def call_external_api():
-    url = 'https://your-fastapi-endpoint/generate'
+    url = 'https://2885-34-141-212-104.ngrok-free.app/generate'
     payload = {'message': 'From Lambda'}
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload).encode('utf-8')
