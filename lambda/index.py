@@ -19,28 +19,18 @@ def extract_region_from_arn(arn):
 bedrock_client = None
 
 # モデルID
-# MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
-MODEL_ID = os.environ.get("MODEL_ID", "google/gemma-3-1b-it")
+MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 # 外部APIの呼び出し (original)
 def call_external_api():
-    url = 'https://a27f-35-245-103-168.ngrok-free.app/generate'  # 呼び出したいAPIのURL
-    payload = {
-        'message': 'From FastAPI',
-    }
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
-    data = json.dumps(payload).encode('utf-8')  # JSONをバイト列に変換
-
+    url = 'https://your-fastapi-endpoint/generate'
+    payload = {'message': 'From Lambda'}
+    headers = {'Content-Type': 'application/json'}
+    data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-
     try:
         with urllib.request.urlopen(req) as response:
-            response_body = response.read().decode('utf-8')
-            print(response_body)
-            return json.loads(response_body)  # 必要ならJSONとしてパース
+            return json.loads(response.read().decode('utf-8'))
     except Exception as e:
         print(f"Error calling external API: {e}")
         return None
@@ -105,28 +95,48 @@ def lambda_handler(event, context):
             }
         }
         
-        print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
-        
+        USE_BEDROCK = os.environ.get("USE_BEDROCK", "false").lower() == "true"
+
+        # assistant_response の取得
+        if USE_BEDROCK:
+            print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
+            response = bedrock_client.invoke_model(
+                modelId=MODEL_ID,
+                body=json.dumps(request_payload),
+                contentType="application/json"
+            )
+            response_body = json.loads(response['body'].read())
+            print("Bedrock response:", json.dumps(response_body, default=str))
+            
+            # 応答の検証
+            if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
+                raise Exception("No response content from the model")
+
+            assistant_response = response_body['output']['message']['content'][0]['text']
+        else:
+            external_response = call_external_api()
+            if not external_response:
+                raise Exception("No response from external API")
+            assistant_response = external_response.get('response', 'Default response from API')
+
+
         # invoke_model APIを呼び出し
         # response = bedrock_client.invoke_model(
         #     modelId=MODEL_ID,
         #     body=json.dumps(request_payload),
         #     contentType="application/json"
         # )
-
-        # FastAPIへの接続
-        call_external_api()
         
-        # レスポンスを解析
-        response_body = json.loads(response['body'].read())
-        print("Bedrock response:", json.dumps(response_body, default=str))
+        # # レスポンスを解析
+        # response_body = json.loads(response['body'].read())
+        # print("Bedrock response:", json.dumps(response_body, default=str))
         
-        # 応答の検証
-        if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
-            raise Exception("No response content from the model")
+        # # 応答の検証
+        # if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
+        #     raise Exception("No response content from the model")
         
-        # アシスタントの応答を取得
-        assistant_response = response_body['output']['message']['content'][0]['text']
+        # # アシスタントの応答を取得
+        # assistant_response = response_body['output']['message']['content'][0]['text']
         
         # アシスタントの応答を会話履歴に追加
         messages.append({
