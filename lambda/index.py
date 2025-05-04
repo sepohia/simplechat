@@ -23,7 +23,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 # 外部APIの呼び出し (original)
 def call_external_api():
-    url = 'https://2885-34-141-212-104.ngrok-free.app/generate'
+    url = 'https://c1e6-34-44-147-228.ngrok-free.app/generate'
     payload = {'message': 'From Lambda'}
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload).encode('utf-8')
@@ -98,22 +98,22 @@ def lambda_handler(event, context):
         USE_BEDROCK = os.environ.get("USE_BEDROCK", "false").lower() == "true"
 
         # assistant_response の取得
-        if USE_BEDROCK:
-            print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
-            response = bedrock_client.invoke_model(
-                modelId=MODEL_ID,
-                body=json.dumps(request_payload),
-                contentType="application/json"
-            )
-            response_body = json.loads(response['body'].read())
-            print("Bedrock response:", json.dumps(response_body, default=str))
+        # if USE_BEDROCK:
+        #     print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
+        #     response = bedrock_client.invoke_model(
+        #         modelId=MODEL_ID,
+        #         body=json.dumps(request_payload),
+        #         contentType="application/json"
+        #     )
+        #     response_body = json.loads(response['body'].read())
+        #     print("Bedrock response:", json.dumps(response_body, default=str))
             
-            # 応答の検証
-            if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
-                raise Exception("No response content from the model")
+        #     # 応答の検証
+        #     if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
+        #         raise Exception("No response content from the model")
 
-            assistant_response = response_body['output']['message']['content'][0]['text']
-        else:
+        #     assistant_response = response_body['output']['message']['content'][0]['text']
+        # else:
             external_response = call_external_api()
             if not external_response:
                 raise Exception("No response from external API")
