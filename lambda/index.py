@@ -25,7 +25,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 def call_external_api():
     api_endpoint_base = os.environ.get("NGROK_ENDPOINT")
     if not api_endpoint_base:
-        print("エラー: 環境変数 'NGROK_API_ENDPOINT' が設定されていません。")
+        print("エラー: 環境変数 'NGROK_ENDPOINT' が設定されていません。")
         raise ValueError("API エンドポイントが Lambda 環境変数に設定されていません。")
     api_url = f"{api_endpoint_base.rstrip('/')}/generate"
     print(f"Target API URL: {api_url}")

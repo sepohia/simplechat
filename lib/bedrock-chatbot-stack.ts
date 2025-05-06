@@ -158,6 +158,7 @@ export class BedrockChatbotStack extends cdk.Stack {
       role: lambdaRole,
       environment: {
         MODEL_ID: modelId,
+        NGROK_ENDPOINT: 'https://9474-35-245-163-201.ngrok-free.app/',
       },
     });
 
