@@ -5,6 +5,7 @@ import boto3
 import re  # 正規表現モジュールをインポート
 from botocore.exceptions import ClientError
 import urllib.request
+import urllib.error
 
 
 # Lambda コンテキストからリージョンを抽出する関数
@@ -21,12 +22,13 @@ bedrock_client = None
 # モデルID
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
-# 外部APIの呼び出し (original)
+# 外部APIの呼び出し (改善版)
 def call_external_api():
     api_endpoint_base = os.environ.get("NGROK_ENDPOINT")
     if not api_endpoint_base:
         print("エラー: 環境変数 'NGROK_ENDPOINT' が設定されていません。")
         raise ValueError("API エンドポイントが Lambda 環境変数に設定されていません。")
+    
     api_url = f"{api_endpoint_base.rstrip('/')}/generate"
     print(f"Target API URL: {api_url}")
 
@@ -34,12 +36,40 @@ def call_external_api():
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(api_url, data=data, headers=headers, method='POST')
+
     try:
         with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode('utf-8'))
+            response_data = response.read().decode('utf-8')
+            print(f"Response from external API: {response_data[:300]}...")
+            return json.loads(response_data)
+
+    except urllib.error.HTTPError as http_err:
+        status_code = http_err.code
+        try:
+            error_body = http_err.read().decode('utf-8')
+        except Exception:
+            error_body = "(レスポンスボディの読み取りに失敗)"
+
+        print(f"HTTPError: Status {status_code}")
+        print(f"Response Body: {error_body}")
+
+        if status_code == 422:
+            print("⚠️ 外部APIが HTTP 422 Unprocessable Entity を返しました。リクエスト内容を確認してください。")
+        raise Exception(f"外部API呼び出しに失敗しました (HTTP {status_code}): {error_body}")
+
+    except urllib.error.URLError as url_err:
+        print(f"URLError: {url_err.reason}")
+        raise Exception(f"外部APIへの接続に失敗しました: {url_err.reason}")
+
+    except json.JSONDecodeError:
+        print("⚠️ 外部APIからのレスポンスがJSONとして解析できませんでした。")
+        raise Exception("外部APIのレスポンスが無効なJSON形式です。")
+
     except Exception as e:
-        print(f"Error calling external API: {e}")
-        return None
+        print(f"予期しないエラー: {e}")
+        raise Exception("外部API呼び出し中に予期しないエラーが発生しました。")
+
+
 
 def lambda_handler(event, context):
     try:
