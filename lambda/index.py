@@ -23,7 +23,7 @@ bedrock_client = None
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 # 外部APIの呼び出し (改善版)
-def call_external_api():
+def call_external_api(message):
     api_endpoint_base = os.environ.get("NGROK_ENDPOINT")
     if not api_endpoint_base:
         print("エラー: 環境変数 'NGROK_ENDPOINT' が設定されていません。")
@@ -32,7 +32,7 @@ def call_external_api():
     api_url = f"{api_endpoint_base.rstrip('/')}/generate"
     print(f"Target API URL: {api_url}")
 
-    payload = {'message': 'From Lambda'}
+    payload = {'prompt': message}
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(api_url, data=data, headers=headers, method='POST')
@@ -74,12 +74,7 @@ def call_external_api():
 def lambda_handler(event, context):
     try:
         print("Received event:", json.dumps(event))
-
-        user_info = None
-        if 'requestContext' in event and 'authorizer' in event['requestContext']:
-            user_info = event['requestContext']['authorizer']['claims']
-            print(f"Authenticated user: {user_info.get('email') or user_info.get('cognito:username')}")
-
+        
         body = json.loads(event['body'])
         message = body['message']
         conversation_history = body.get('conversationHistory', [])
@@ -89,11 +84,11 @@ def lambda_handler(event, context):
         messages = conversation_history.copy()
         messages.append({"role": "user", "content": message})
 
-        external_response = call_external_api()
+        external_response = call_external_api(message)
         if not external_response:
             raise Exception("No response from external API")
 
-        assistant_response = external_response.get('response', 'Default response from API')
+        assistant_response = external_response.get('generated_text')
 
         messages.append({"role": "assistant", "content": assistant_response})
 

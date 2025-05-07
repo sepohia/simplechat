@@ -153,7 +153,7 @@ export class BedrockChatbotStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_10,
       handler: 'index.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(1000),
       memorySize: 128,
       role: lambdaRole,
       environment: {
